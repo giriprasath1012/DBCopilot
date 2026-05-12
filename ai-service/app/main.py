@@ -103,10 +103,16 @@ def fetch_live_schema() -> str:
         try:
             for ck in inspector.get_check_constraints(table_name):
                 sqltext = ck.get("sqltext", "")
-                col_match = re.search(r"(\w+)\s*(?:IN\b|=\s*ANY)", sqltext, re.IGNORECASE)
-                vals = re.findall(r"'([^']+)'", sqltext)
+                # Handles: col::type = ANY(...) [PostgreSQL] and col IN (...)
+                col_match = re.search(
+                    r"(\w+)(?:::\w+(?:\s+\w+)*)?\s*=\s*ANY|(\w+)\s+IN\b",
+                    sqltext, re.IGNORECASE
+                )
+                # Exclude type-cast names: skip values directly preceded by ::
+                vals = re.findall(r"(?<![:\w])'([^']+)'", sqltext)
                 if col_match and vals:
-                    check_values[col_match.group(1)] = vals
+                    col_name = col_match.group(1) or col_match.group(2)
+                    check_values[col_name] = vals
         except Exception:
             pass
 
