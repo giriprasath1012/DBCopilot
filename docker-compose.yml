@@ -40,11 +40,18 @@ services:
     environment:
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=llama3
+      # ── Database connection ─────────────────────────────────────────────────
+      # DB_TYPE options: postgresql | mysql | oracle | sqlserver | h2
+      - DB_TYPE=postgresql
       - DB_HOST=postgres
       - DB_NAME=dbcopilot_db
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5432
+      # To use a full JDBC-style URL instead, set DB_URL and it overrides all above:
+      # - DB_URL=postgresql+psycopg2://user:pass@host:5432/dbname
+      # Tables to hide from the AI (app-internal tables):
+      - DB_EXCLUDE_TABLES=users,query_history
     depends_on:
       ollama:
         condition: service_healthy
@@ -60,7 +67,13 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # ── Database connection ─────────────────────────────────────────────────
+      # PostgreSQL (default):
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/dbcopilot_db
+      # MySQL:    jdbc:mysql://host:3306/dbname?useSSL=false&allowPublicKeyRetrieval=true
+      # Oracle:   jdbc:oracle:thin:@host:1521/service_name
+      # SQL Srv:  jdbc:sqlserver://host:1433;databaseName=dbname;encrypt=true;trustServerCertificate=true
+      # H2:       jdbc:h2:tcp://host:9092/dbname
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
       - AI_SERVICE_URL=http://ai-service:8000
