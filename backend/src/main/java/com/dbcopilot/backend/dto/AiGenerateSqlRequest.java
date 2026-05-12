@@ -9,5 +9,4 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class AiGenerateSqlRequest {
     private String query;
-    private String schema;
 }

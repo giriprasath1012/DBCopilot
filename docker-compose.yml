@@ -40,8 +40,15 @@ services:
     environment:
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=llama3
+      - DB_HOST=postgres
+      - DB_NAME=dbcopilot_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
     depends_on:
       ollama:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     restart: unless-stopped
 
