@@ -115,24 +115,6 @@ Switch database by updating `DB_TYPE` and connection variables in `docker-compos
 
 ---
 
-## Database Schema
-
-The included seed database has ~300+ realistic records across 9 business tables:
-
-| Table | Rows | Description |
-|-------|------|-------------|
-| `customers` | 50 | Name, city, email, phone, status (ACTIVE/INACTIVE) |
-| `employees` | 35 | Name, department, designation, salary, joining date |
-| `products` | 30 | Name, category, price, stock |
-| `orders` | 123 | Customer orders with status (PENDING/COMPLETED/CANCELLED) |
-| `departments` | 8 | Name, head, budget, location |
-| `suppliers` | 10 | Name, contact, city, country, status |
-| `supplier_products` | 25 | Supplier–product mapping with unit price |
-| `invoices` | 95 | Invoice amount, due date, status (PAID/UNPAID/OVERDUE) |
-| `leave_requests` | 47 | Employee leave with type and status (PENDING/APPROVED/REJECTED) |
-
----
-
 ## Prerequisites
 
 | Tool | Version |
