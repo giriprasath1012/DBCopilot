@@ -1,10 +1,19 @@
+import { useTheme } from '../context/ThemeContext'
+
 export default function Sidebar({ history, onNewChat, onSelectHistory, onDeleteHistory, username, onLogout }) {
+  const { theme, toggleTheme } = useTheme()
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <div className="brand">
-          <span className="brand-icon">🗄️</span>
-          <span>DBCopilot</span>
+        <div className="brand-row">
+          <div className="brand">
+            <span className="brand-icon">🗄️</span>
+            <span>DBCopilot</span>
+          </div>
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+            {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+          </button>
         </div>
         <button className="new-chat-btn" onClick={onNewChat}>+ New Chat</button>
       </div>
