@@ -90,8 +90,29 @@ def fetch_live_schema() -> str:
                 (r["table_name"], r["column_name"]): f"{r['ref_table']}.{r['ref_col']}"
                 for r in cur.fetchall()
             }
+
+            # Fetch CHECK constraints to expose allowed enum values to the LLM
+            cur.execute("""
+                SELECT tc.table_name, cc.check_clause
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.check_constraints cc
+                  ON tc.constraint_name = cc.constraint_name
+                WHERE tc.constraint_type = 'CHECK'
+                  AND tc.table_schema    = 'public'
+            """)
+            raw_checks = cur.fetchall()
     finally:
         conn.close()
+
+    # Parse CHECK clauses to extract column→allowed values mapping
+    # e.g. "(status = ANY (ARRAY['ACTIVE', 'INACTIVE']))" → {(table, status): ['ACTIVE','INACTIVE']}
+    check_values: dict = {}
+    for row in raw_checks:
+        clause = row["check_clause"]
+        col_match = re.search(r"\((\w+)::text\s*=\s*ANY", clause)
+        vals = re.findall(r"'([^']+)'", clause)
+        if col_match and vals:
+            check_values[(row["table_name"], col_match.group(1))] = vals
 
     table_cols: dict = defaultdict(list)
     for col in all_columns:
@@ -112,6 +133,9 @@ def fetch_live_schema() -> str:
                 tags.append(f"FK→{fks[(table, name)]}")
             if col.get("column_default") and "nextval" in str(col["column_default"]):
                 tags.append("SERIAL")
+            if (table, name) in check_values:
+                allowed = ", ".join(f"'{v}'" for v in check_values[(table, name)])
+                tags.append(f"values: {allowed}")
             tag_str = f", {', '.join(tags)}" if tags else ""
             col_defs.append(f"{name} ({dtype}{tag_str})")
         parts.append(f"Table: {table}\n  Columns: {', '.join(col_defs)}")
@@ -157,7 +181,8 @@ STRICT RULES:
    - If the user does not specify a count → use LIMIT 100.
 4. Choose the correct table from the schema that best matches the user's request.
 5. Use exact column and table names from the schema below.
-6. If the query is ambiguous, make a reasonable assumption.
+6. String values are case-sensitive. Always use the exact case shown in the schema's "values:" annotations (e.g., 'ACTIVE' not 'active', 'COMPLETED' not 'completed').
+7. If the query is ambiguous, make a reasonable assumption.
 
 Database Schema (live from the database):
 {schema}
