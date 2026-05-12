@@ -43,6 +43,9 @@ public class ChatService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private SchemaService schemaService;
+
     public ChatQueryResponse processQuery(String message, String username) {
         if (WRITE_INTENT.matcher(message).find()) {
             return new ChatQueryResponse(
@@ -65,10 +68,11 @@ public class ChatService {
         String explanation = null;
 
         try {
-            // Step 1: Call AI service to generate SQL
+            // Step 1: Call AI service with live schema from DB
+            String liveSchema = schemaService.buildSchemaDescription();
             AiGenerateSqlResponse aiResponse = aiServiceWebClient.post()
                     .uri("/generate-sql")
-                    .bodyValue(new AiGenerateSqlRequest(message, null))
+                    .bodyValue(new AiGenerateSqlRequest(message, liveSchema))
                     .retrieve()
                     .bodyToMono(AiGenerateSqlResponse.class)
                     .timeout(Duration.ofSeconds(120))
