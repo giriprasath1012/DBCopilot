@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import ResultTable from './ResultTable'
 import ResultChart from './ResultChart'
-import { exportCsvUrl } from '../api/chatApi'
+import { downloadCsv } from '../api/chatApi'
 
 export default function ChatMessage({ message }) {
   const [showSql,   setShowSql]   = useState(false)
@@ -33,9 +33,9 @@ export default function ChatMessage({ message }) {
               </button>
             )}
             {hasData && message.queryId && (
-              <a className="meta-btn" href={exportCsvUrl(message.queryId)} download="results.csv">
+              <button className="meta-btn" onClick={() => downloadCsv(message.queryId)}>
                 ⬇ Export CSV
-              </a>
+              </button>
             )}
           </div>
         )}

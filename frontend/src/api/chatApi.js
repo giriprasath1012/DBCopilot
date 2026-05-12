@@ -14,4 +14,14 @@ export const deleteHistory = async (id) => {
   await api.delete(`/history/${id}`)
 }
 
-export const exportCsvUrl = (queryId) => `/api/export/csv/${queryId}`
+export const downloadCsv = async (queryId) => {
+  const response = await api.get(`/export/csv/${queryId}`, { responseType: 'blob' })
+  const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', 'results.csv')
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
