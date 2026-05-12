@@ -58,7 +58,7 @@ export default function ChatPage() {
         errorMessage: res.errorMessage,
       }
       setMessages(prev => [...prev, assistantMsg])
-      loadHistory()
+      if (res.status !== 'REJECTED') loadHistory()
     } catch (err) {
       const errMsg = err.response?.data?.errorMessage || err.message || 'Something went wrong.'
       setMessages(prev => [...prev, {

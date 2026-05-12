@@ -269,6 +269,13 @@ body {
   border-radius: 16px 16px 16px 4px;
 }
 
+.assistant-message .message-bubble.rejected-bubble {
+  background: rgba(245,158,11,.08);
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+.rejected-icon { font-style: normal; }
+
 .assistant-message .message-bubble.error-bubble {
   background: rgba(239,68,68,.1);
   border-color: var(--error);

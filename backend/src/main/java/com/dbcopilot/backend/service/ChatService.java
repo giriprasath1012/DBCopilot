@@ -18,9 +18,15 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @Service
 public class ChatService {
+
+    private static final Pattern WRITE_INTENT = Pattern.compile(
+        "\\b(update|delete|remove|insert|drop|alter|truncate|modify)\\b",
+        Pattern.CASE_INSENSITIVE
+    );
 
     @Autowired
     private WebClient aiServiceWebClient;
@@ -38,6 +44,13 @@ public class ChatService {
     private UserRepository userRepository;
 
     public ChatQueryResponse processQuery(String message, String username) {
+        if (WRITE_INTENT.matcher(message).find()) {
+            return new ChatQueryResponse(
+                "This is a read-only system. Data modification operations (UPDATE, DELETE, INSERT) are not permitted. Please ask a question to retrieve information instead.",
+                null, null, 0, null, null, "REJECTED", null
+            );
+        }
+
         long startTime = System.currentTimeMillis();
 
         User user = userRepository.findByUsername(username)
