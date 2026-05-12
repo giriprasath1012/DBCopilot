@@ -163,10 +163,20 @@ def extract_sql(raw: str) -> str:
     return clean_sql(raw)
 
 
-def build_prompt(query: str, schema: str) -> str:
-    meta   = DB_DEFAULTS.get(DB_TYPE, DB_DEFAULTS["postgresql"])
+def build_prompt(query: str, schema: str, history: list = []) -> str:
+    meta    = DB_DEFAULTS.get(DB_TYPE, DB_DEFAULTS["postgresql"])
     dialect = meta["dialect"]
     limit   = meta["limit_syntax"].replace("{n}", "N")
+
+    context = ""
+    if history:
+        context = "\nConversation history (use this to understand follow-up questions):\n"
+        for turn in history[-5:]:
+            context += f'User: {turn.get("userQuery", "")}\n'
+            context += f'SQL:  {turn.get("generatedSql", "")}\n'
+            if turn.get("resultSummary"):
+                context += f'Result: {turn["resultSummary"]}\n'
+            context += "\n"
 
     return f"""You are a {dialect} SQL expert. Convert natural language to a valid {dialect} SELECT query.
 
@@ -179,11 +189,11 @@ STRICT RULES:
 4. Choose the correct table that best matches the user's request.
 5. Use exact column and table names from the schema below.
 6. String values are case-sensitive. Always use the exact case shown in the schema's "values:" annotations.
-7. If the query is ambiguous, make a reasonable assumption.
+7. If the query is ambiguous or is a follow-up, use the conversation history to resolve it.
 
 Database Schema (live from the connected {dialect} database):
 {schema}
-
+{context}
 Natural language query: "{query}"
 
 SQL:"""
@@ -200,8 +210,15 @@ async def call_ollama(prompt: str) -> str:
 
 
 # ── Models ─────────────────────────────────────────────────────────────────────
+class ConversationTurn(BaseModel):
+    userQuery: str
+    generatedSql: str
+    resultSummary: str | None = None
+
+
 class GenerateSqlRequest(BaseModel):
     query: str
+    conversationHistory: list[ConversationTurn] = []
 
 
 class GenerateSqlResponse(BaseModel):
@@ -240,7 +257,8 @@ async def generate_sql(request: GenerateSqlRequest):
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Cannot fetch schema from database: {str(e)}")
 
-    prompt = build_prompt(request.query.strip(), schema)
+    history = [t.model_dump() for t in request.conversationHistory]
+    prompt = build_prompt(request.query.strip(), schema, history)
 
     try:
         raw_response = await call_ollama(prompt)

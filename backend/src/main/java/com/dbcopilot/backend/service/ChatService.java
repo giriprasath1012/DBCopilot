@@ -16,6 +16,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -43,7 +44,8 @@ public class ChatService {
     @Autowired
     private UserRepository userRepository;
 
-    public ChatQueryResponse processQuery(String message, String username) {
+    public ChatQueryResponse processQuery(String message, String username,
+                                          List<com.dbcopilot.backend.dto.ConversationTurn> conversationHistory) {
         if (WRITE_INTENT.matcher(message).find()) {
             return new ChatQueryResponse(
                 "This is a read-only system. Data modification operations (UPDATE, DELETE, INSERT) are not permitted. Please ask a question to retrieve information instead.",
@@ -66,9 +68,11 @@ public class ChatService {
 
         try {
             // Step 1: Call AI service — schema is fetched from DB by the AI service itself
+            List<com.dbcopilot.backend.dto.ConversationTurn> chatContext =
+                    (conversationHistory != null) ? conversationHistory : Collections.emptyList();
             AiGenerateSqlResponse aiResponse = aiServiceWebClient.post()
                     .uri("/generate-sql")
-                    .bodyValue(new AiGenerateSqlRequest(message))
+                    .bodyValue(new AiGenerateSqlRequest(message, chatContext))
                     .retrieve()
                     .bodyToMono(AiGenerateSqlResponse.class)
                     .timeout(Duration.ofSeconds(120))

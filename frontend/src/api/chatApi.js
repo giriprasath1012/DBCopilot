@@ -1,7 +1,7 @@
 import api from './axios'
 
-export const postQuery = async (message) => {
-  const { data } = await api.post('/chat/query', { message })
+export const postQuery = async (message, conversationHistory = []) => {
+  const { data } = await api.post('/chat/query', { message, conversationHistory })
   return data
 }
 

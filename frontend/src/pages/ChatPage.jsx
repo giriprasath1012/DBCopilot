@@ -33,14 +33,30 @@ export default function ChatPage() {
     try { setHistory(await getHistory()) } catch { /* silent */ }
   }
 
+  const buildConversationHistory = (msgs) => {
+    const history = []
+    for (let i = 0; i < msgs.length - 1; i++) {
+      if (msgs[i].type === 'user' && msgs[i + 1]?.type === 'assistant' && msgs[i + 1].sql) {
+        history.push({
+          userQuery: msgs[i].content,
+          generatedSql: msgs[i + 1].sql,
+          resultSummary: msgs[i + 1].content || null,
+        })
+        i++
+      }
+    }
+    return history.slice(-5)
+  }
+
   const sendQuery = async (query) => {
     if (!query.trim() || loading) return
+    const conversationHistory = buildConversationHistory(messages)
     setMessages(prev => [...prev, { id: Date.now(), type: 'user', content: query.trim() }])
     setInput('')
     setLoading(true)
 
     try {
-      const res = await postQuery(query)
+      const res = await postQuery(query, conversationHistory)
       setMessages(prev => [...prev, {
         id: Date.now() + 1, type: 'assistant',
         content: res.summary, sql: res.sql, data: res.data,

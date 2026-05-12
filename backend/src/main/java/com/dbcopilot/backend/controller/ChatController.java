@@ -22,7 +22,7 @@ public class ChatController {
         if (request.getMessage() == null || request.getMessage().isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Message cannot be empty"));
         }
-        ChatQueryResponse response = chatService.processQuery(request.getMessage(), principal.getName());
+        ChatQueryResponse response = chatService.processQuery(request.getMessage(), principal.getName(), request.getConversationHistory());
         return ResponseEntity.ok(response);
     }
 }
