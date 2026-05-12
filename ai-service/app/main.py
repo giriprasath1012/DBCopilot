@@ -51,9 +51,12 @@ def build_prompt(query: str, schema: str) -> str:
 STRICT RULES:
 1. Output ONLY the raw SQL query — no markdown, no code blocks, no explanation text.
 2. Only generate SELECT queries. Never use DELETE, UPDATE, INSERT, DROP, ALTER, or TRUNCATE.
-3. Always add LIMIT 100 unless the user asks for a specific number.
-4. Use exact column and table names from the schema below.
-5. If the query is ambiguous, make a reasonable assumption.
+3. Row limiting: use ONLY the LIMIT clause. Never use FETCH FIRST / FETCH NEXT / ROWS ONLY.
+   - If the user says "top N", "first N", "N records", etc. → use LIMIT N.
+   - If the user does not specify a count → use LIMIT 100.
+4. Choose the correct table from the schema that best matches the user's request. Do NOT default to products.
+5. Use exact column and table names from the schema below.
+6. If the query is ambiguous, make a reasonable assumption.
 
 Database Schema:
 {schema}
@@ -61,6 +64,24 @@ Database Schema:
 Natural language query: "{query}"
 
 SQL:"""
+
+
+def clean_sql(sql: str) -> str:
+    """Fix common LLM quirks: FETCH FIRST / duplicate LIMIT."""
+    # If LLM used FETCH FIRST N ROWS ONLY, extract N and convert to LIMIT N
+    fetch_match = re.search(r'FETCH\s+(?:FIRST|NEXT)\s+(\d+)\s+ROWS?\s+ONLY', sql, re.IGNORECASE)
+    if fetch_match:
+        fetch_n = fetch_match.group(1)
+        # Remove the FETCH clause entirely
+        sql = re.sub(r'\s*FETCH\s+(?:FIRST|NEXT)\s+\d+\s+ROWS?\s+ONLY', '', sql, flags=re.IGNORECASE)
+        # Replace the generic LIMIT 100 with the user-specified number, or add LIMIT N if missing
+        if re.search(r'\bLIMIT\s+100\b', sql, re.IGNORECASE):
+            sql = re.sub(r'\bLIMIT\s+100\b', f'LIMIT {fetch_n}', sql, flags=re.IGNORECASE)
+        elif not re.search(r'\bLIMIT\s+\d+', sql, re.IGNORECASE):
+            sql = sql.rstrip('; ') + f' LIMIT {fetch_n}'
+
+    sql = sql.strip().rstrip(';')
+    return sql + ';'
 
 
 def extract_sql(raw: str) -> str:
@@ -73,10 +94,10 @@ def extract_sql(raw: str) -> str:
     match = re.search(r"(SELECT\b.+?)(?:;|$)", raw, re.IGNORECASE | re.DOTALL)
     if match:
         sql = match.group(1).strip()
-        return sql + ";" if not sql.endswith(";") else sql
+        sql = sql + ";" if not sql.endswith(";") else sql
+        return clean_sql(sql)
 
-    # Fallback: return whatever came back
-    return raw
+    return clean_sql(raw)
 
 
 async def call_ollama(prompt: str) -> str:
